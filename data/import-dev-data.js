@@ -50,8 +50,7 @@ const importData = async (statss) => {
             fx_ID: stat['FXID'],
             player: stat['Player'],
             shirt_NO: stat['ShirtNo'],
-            plforn: stat['PLFORN'],
-            plsurn: stat['PLSURN'],
+            playerName: stat['PLFORN']+ ' ' + stat['PLSURN'],
             teamName: stat['TEAMNAME'],
             mins: stat['MINS'],
             left_right_fx_ID: stat['Left_Right_FXID'],
@@ -81,7 +80,7 @@ const importData = async (statss) => {
             assoc_player: stat['assoc_player'],
             Right_Right_FXID: stat['Right_Right_FXID'],
             Data: stat['Data'],
-            FxDate: moment(stat['FxDate'], "DD/MM/YYYY"),
+            FxDate: moment(stat['FxDate'], "DD/MM/YYYY").year(),
             FxWeek: stat['FxWeek'],
             FxHTID: stat['FxHTID'],
             hometeam: stat['hometeam'],
@@ -107,7 +106,7 @@ const importData = async (statss) => {
         toInsert.push(stats[i]);
         const isLastItem = i === stats.length - 1;
         // every 100 items, insert into the database
-        if (i % 50000 === 0 || isLastItem) {
+        if (i % 10000 === 0 || isLastItem) {
             await Stat.insertMany(toInsert);
             toInsert = [];
         }
@@ -127,7 +126,7 @@ const importData = async (statss) => {
 // DELETE DATA FROM DATABASE
 const deleteData = async () => {
     try {
-        await User.deleteMany();
+        await Stat.deleteMany();
         console.log('Data has been deleted Successfully');
         process.exit(1);
     } catch (err) {

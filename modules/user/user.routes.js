@@ -26,7 +26,7 @@ router
 
 router
     .route('/playersProfiles')
-    .get(userCtrl.getPlayerProfiles)
+    .get(userCtrl.getPlayerProfiles);
 
 router
     .route('/submitForm')
@@ -35,6 +35,18 @@ router
 router
     .route('/')
     .get(userCtrl.findUser);
+
+router
+    .route('/getDefenceTable')
+    .get(userCtrl.getDefenceTable);
+
+router
+    .route('/getErrorTable')
+    .get(userCtrl.getErrorTable);
+
+router
+    .route('/getPieceTable')
+    .get(userCtrl.getPieceTable);
 
 
 
