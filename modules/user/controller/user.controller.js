@@ -10,24 +10,17 @@ var multer = require('multer')
 var upload = multer({dest: 'uploads/'})
 const {Positions} = require('../../../config/constants');
 
-//middleware
-/*exports.aliasTopUsers = catchAsync(async (req, res, next) => {
-    req.query.limit = '5';
-    req.query.sort = '-email,password';
-    req.query.fields = 'first_name,last_name,email';
-    next();
-});*/
 
 exports.findUser = catchAsync(async (req, res, next) => {
 
     const name = req.query.name.toLowerCase();
-    console.log('name:', name);
+
     const user = await Player.findOne({player: name});
     if (!user) {
         return next(new AppError(`Can't find user with this ID `, 404));
     }
 
-    console.log('user: ', user);
+
     res.status(200).json({
         status: 'success',
         data: {
@@ -38,23 +31,6 @@ exports.findUser = catchAsync(async (req, res, next) => {
 });
 exports.getPlayerProfiles = catchAsync(async (req, res, next) => {
 
-    //  const { name } = req.param
-    /*    const {player,
-            dob,
-            age,
-            height,
-            weight,
-            photo} = req.body;
-         const user = await Player.create({
-             player,
-             dob,
-             age,
-             height,
-             weight,
-             photo
-         });*/
-
-    console.log('came!')
 
     const users = await Stat.aggregate([
         {
@@ -72,8 +48,7 @@ exports.getPlayerProfiles = catchAsync(async (req, res, next) => {
             }
         }
     ]);
-    // console.log('users:', users);
-    console.log(users);
+
     if (!users) {
         return next(new AppError(`Can't find user with this ID `, 404));
     }
@@ -134,12 +109,14 @@ exports.getDefenceTable = catchAsync(async (req, res, next) => {
         },
         {
             $group: {
-                _id: "$fx_ID",
+                _id: "$FxDate",
+                game: {$addToSet: "$fx_ID"},
+                count:{$sum:1}
             }
-        }, {
-            $count: "counts"
         }
     ]);
+
+
     const toWon = await Stat.aggregate([
         {
             $match: {
@@ -181,10 +158,7 @@ exports.getDefenceTable = catchAsync(async (req, res, next) => {
     })
 
     const data = [];
-    let count = 1;
-    if (fxIDs.length > 0) {
-        count = fxIDs[0].counts
-    }
+
     year = [...Array.from(new Set(year))];
     result.year = [...year];
     for (let i = 0; i < year.length; i++) {
@@ -204,6 +178,15 @@ exports.getDefenceTable = catchAsync(async (req, res, next) => {
                 return item._id;
             }
         });
+
+
+        let fxIDsAvgCount = fxIDs.find((item,index)=>{
+                if(item._id=== year[i]){
+                    return item;
+                }
+        });
+        const count = fxIDsAvgCount ? fxIDsAvgCount.count : 1;
+
         const count1 = countTackled ? countTackled.count : 0;
         const count2 = countMissed ? countMissed.count : 0;
         const count3 = countWon ? countWon.count : 0;
@@ -212,10 +195,10 @@ exports.getDefenceTable = catchAsync(async (req, res, next) => {
             year: year[i],
             missedCount: count1,
             tackleCount: count2,
-            percentage: percent,
-            missedAverage: count1 / count,
-            tackleAverage: count2 / count,
-            toWonAve: count3 / count,
+            percentage: (percent).toFixed(3),
+            missedAverage: (count1 / count).toFixed(3),
+            tackleAverage: (count2 / count).toFixed(3),
+            toWonAve: (count3 / count).toFixed(3),
             toWon: count3,
 
         }
@@ -233,14 +216,12 @@ exports.getDefenceTable = catchAsync(async (req, res, next) => {
     });
 });
 exports.getErrorTable = catchAsync(async (req, res, next) => {
-    console.log('Error Table');
+
     const name = req.query.playerName;
     const position = req.query.position;
     const pos = Positions[position];
 
-    console.log('name:', name);
-    console.log('position:', position);
-    console.log('pos:', pos);
+
     const fxIDs = await Stat.aggregate([
         {
             $match: {
@@ -249,10 +230,10 @@ exports.getErrorTable = catchAsync(async (req, res, next) => {
         },
         {
             $group: {
-                _id: "$fx_ID",
+                _id: "$FxDate",
+                game: {$addToSet: "$fx_ID"},
+                count:{$sum:1}
             }
-        }, {
-            $count: "counts"
         }
     ]);
 
@@ -307,10 +288,7 @@ exports.getErrorTable = catchAsync(async (req, res, next) => {
     })
 
     const data = [];
-    let count = 1;
-    if (fxIDs.length > 0) {
-        count = fxIDs[0].counts
-    }
+
     year = [...Array.from(new Set(year))];
     result.year = [...year];
 
@@ -325,14 +303,20 @@ exports.getErrorTable = catchAsync(async (req, res, next) => {
                 return item._id;
             }
         });
+        let fxIDsAvgCount = fxIDs.find((item,index)=>{
+            if(item._id=== year[i]){
+                return item;
+            }
+        });
+        const count = fxIDsAvgCount ? fxIDsAvgCount.count : 1;
         const count1 = countTackled ? countTackled.count : 0;
         const count2 = countMissed ? countMissed.count : 0;
         const item = {
             year: year[i],
             turnOverCount: count1,
             penaltyCount: count2,
-            turnOverAverage: count1 / count,
-            penaltyAverage: count2 / count
+            turnOverAverage: (count1 / count).toFixed(3),
+            penaltyAverage: (count2 / count).toFixed(3)
         }
         data.push(item);
     }
@@ -349,13 +333,10 @@ exports.getErrorTable = catchAsync(async (req, res, next) => {
     });
 });
 exports.getPieceTable = catchAsync(async (req, res, next) => {
-    console.log('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+
     const name = req.query.playerName;
     const position = req.query.position;
     const pos = Positions[position];
-    console.log('name:', name);
-    console.log('position:', position);
-    console.log('pos:', pos);
 
     const fxIDs = await Stat.aggregate([
         {
@@ -365,13 +346,12 @@ exports.getPieceTable = catchAsync(async (req, res, next) => {
         },
         {
             $group: {
-                _id: "$fx_ID",
+                _id: "$FxDate",
+                game: {$addToSet: "$fx_ID"},
+                count:{$sum:1}
             }
-        }, {
-            $count: "counts"
         }
     ]);
-    console.log('fxIDs:', fxIDs);
 
     const lineout = await Stat.aggregate([
         {
@@ -390,13 +370,13 @@ exports.getPieceTable = catchAsync(async (req, res, next) => {
             }
         }
     ]);
-    console.log('lineout:', lineout);
+
     const percentage = await Stat.aggregate([
         {
             $match: {
                 $and: [
                     {playerName: {$eq: name}},
-                    {eventName: {$eq: "LineOut throw"}},
+                   /* {eventName: {$eq: "LineOut throw"}},*/
                     {shirt_NO: {$in: pos}},
                     {action_result: {$eq: 'Won Clean'}},
                     {action_result: {$eq: 'Won Free Kick'}},
@@ -414,20 +394,19 @@ exports.getPieceTable = catchAsync(async (req, res, next) => {
             }
         }
     ]);
-    console.log('percentage:', percentage);
+
     const loJumps = await Stat.aggregate([
         {
             $match: {
                 $and: [
                     {playerName: {$eq: name}},
-                    {eventName: {$eq: "LineOut throw"}},
                     {shirt_NO: {$in: pos}},
                     {eventName: {$eq: 'Lineout Take'}},
                     {action_type: {$eq: 'LineOut Win 15m+'}},
-                    {action_type: {$eq: 'LineOut Back'}},
-                    {action_type: {$eq: 'LineOut Middle'}},
-                    {action_type: {$eq: 'LineOut Front'}},
-                    {action_type: {$eq: 'LineOut Quick'}},
+                    {action_type: {$eq: 'LineOut Win Back'}},
+                    {action_type: {$eq: 'LineOut Win Middle'}},
+                    {action_type: {$eq: 'LineOut Win Front'}},
+                    {action_type: {$eq: 'LineOut Win Quick'}},
                 ]
             }
         },
@@ -438,13 +417,12 @@ exports.getPieceTable = catchAsync(async (req, res, next) => {
             }
         }
     ]);
-    console.log('loJumps:', loJumps);
+
     const loSteals = await Stat.aggregate([
         {
             $match: {
                 $and: [
                     {playerName: {$eq: name}},
-                    {eventName: {$eq: "LineOut throw"}},
                     {shirt_NO: {$in: pos}},
                     {eventName: {$eq: 'Lineout Take'}},
                     {action_type: {$eq: 'LineOut Steal 15m+'}},
@@ -464,8 +442,6 @@ exports.getPieceTable = catchAsync(async (req, res, next) => {
     ]);
 
 
-
-    console.log('loSteals:', loSteals);
     const result = {
         year: [],
         lineoutCount: [],
@@ -492,11 +468,7 @@ exports.getPieceTable = catchAsync(async (req, res, next) => {
 
 
     const data = [];
-    let count = 1;
-    if (fxIDs.length > 0) {
-        count = fxIDs[0].counts
-    }
-    console.log('count:', count);
+
     year = [...Array.from(new Set(year))];
     result.year = [...year];
 
@@ -521,6 +493,12 @@ exports.getPieceTable = catchAsync(async (req, res, next) => {
                 return item._id;
             }
         });
+        let fxIDsAvgCount = fxIDs.find((item,index)=>{
+            if(item._id=== year[i]){
+                return item;
+            }
+        });
+        const count = fxIDsAvgCount ? fxIDsAvgCount.count : 1;
         const count1 = countlineout ? countlineout.count : 0;
         const count2 = countPercentage ? countPercentage.count : 0;
         const count3 = countLoJumps ? countLoJumps.count : 0;
@@ -530,14 +508,14 @@ exports.getPieceTable = catchAsync(async (req, res, next) => {
             lineoutCount: count1,
             loJumpsCount: count3,
             loStealsCount: count4,
-            percentage: count2,
-            lineoutAverage: count1 / count,
-            loJumpsAverage: count3 / count,
-            loStealsAverage: count4 / count,
+            percentage: (count2).toFixed(3),
+            lineoutAverage: (count1 / count).toFixed(3),
+            loJumpsAverage: (count3 / count).toFixed(3),
+            loStealsAverage: (count4 / count).toFixed(3),
         }
         data.push(item);
     }
-    console.log('data:', data);
+
 
 
     if (!result) {
@@ -559,10 +537,10 @@ exports.submitForm = async (req, res, next) => {
     modal.save();*/
 
     const {data} = req.body;
-    console.log('Form:', data);
-    // console.log(typeof data.photo)
+
+
     const user = await Player.create(data);
-    //  console.log('user Submit Form:', typeof user.photo );
+
 
     res.status(200).json({
         status: 'success',
@@ -572,6 +550,7 @@ exports.submitForm = async (req, res, next) => {
         error: false
     });
 };
+
 exports.attckingTable = async (req, res, next) => {
 
     const result = await Stat.aggregate([
@@ -581,137 +560,3 @@ exports.attckingTable = async (req, res, next) => {
     ])
 
 };
-
-
-/*
-exports.updateUser = catchAsync(async (req, res, next) => {
-
-    const user = await userService.updateUser(req.params.id, req.body);
-    console.log('ngo is:', NGO);
-    if (!user) {
-        return next(new AppError(  `Can't find user with this ID `, 404));
-    }
-    res.status(204).json({
-        status: 'success',
-        data: {
-            user
-        },
-        error: false
-    });
-});
-exports.deleteUser = catchAsync(async (req, res, next) => {
-
-    const user =await userService.deleteUser(req.params.id);
-    if (!user) {
-        return next(new AppError(  `Can't find user with this ID `, 404));
-    }
-    res.status(204).json({
-        status: 'success',
-        data: null,
-        error: false
-    });
-});
-
-exports.findAllUser = catchAsync(async (req, res, next) => {
-    const users = await userService.findAllUser(req);
-    res.status(200).json({
-        status: 'success',
-        results: users.length,
-        data: {
-            users
-        },
-        error: false
-    });
-
-});
-
-exports.getUserStats = catchAsync(async (req, res, next) => {
-
-    const stats = await User.aggregate([
-        {
-            $match: {ratingsAverage: {$gte: 3}}
-        },
-        {
-            $group: {
-                // _id: null,   for all records
-                _id: '$difficulty',
-                numUsers: {$sum: 1},
-                numRatings: {$sum: '$ratingsQuantity'},
-                aveRating: {$avg: '$ratingsAverage'},
-                avePrice: {$avg: '$price'},
-                minPrice: {$min: '$price'},
-            }
-        },
-        {
-            $sort: {avePrice: 1}
-        },
-        {
-            $match: {
-                _id: {$ne: 'EASY'}
-            }
-        }
-    ]);
-
-
-    res.status(200).json({
-        status: 'success',
-        data: {
-            stats
-        }
-    });
-
-});
-
-exports.getMonthlyPlan = catchAsync(async (req, res, next) => {
-
-    try {
-        const year = req.params.year * 1;
-        const plan = await User.aggregate([
-            {
-                $unwind: '$startDates'
-            },
-            {
-                $match: {
-                    startDates: {
-                        $gte: new Date(`${year}-01-01`),
-                        $lte: new Date(`${year}-12-31`)
-                    }
-                }
-            },
-            {
-                $group: {
-                    _id: {$month: '$startDates'},
-                    numTourStart: {$sum: 1},
-                    tours: {$push: '$name'},
-
-                }
-            },
-            {
-                $addField: {
-                    _id: {month: '$_id'}
-                }
-            },
-            {
-                $project: {
-                    _id: 0
-                }
-            },
-            {
-                $sort: {
-                    numTourStart: -1
-                }
-            },
-            {
-                $limit: 12
-            }
-        ]);
-        res.status(200).json({
-            status: 'succes',
-            plan
-        });
-
-    } catch (err) {
-        console.log('Error is:', err);
-    }
-});
-*/
