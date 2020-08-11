@@ -48,6 +48,9 @@ router
     .route('/getPieceTable')
     .get(userCtrl.getPieceTable);
 
+router
+    .route('/getAttackTable')
+    .get(userCtrl.getAttackTable);
 
 
 /*
