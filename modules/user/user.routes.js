@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express();
 const userCtrl = require('./controller/user.controller');
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' })
 /*const middleware = require('../../middlewares/authentication')*/
 
 /*
@@ -19,21 +21,16 @@ router
 */
 
 
-/*router
-    .route('/')
-    .get(userCtrl.findAllUser);*/
-
-
 router
-    .route('/playersProfiles')
+    .route('/playersProfiles',)
     .get(userCtrl.getPlayerProfiles);
 
 router
     .route('/submitForm')
-    .post(userCtrl.submitForm);
+    .post(  upload.single('picture'),userCtrl.submitForm);
 
 router
-    .route('/')
+    .route('/finduser')
     .get(userCtrl.findUser);
 
 router
@@ -52,6 +49,9 @@ router
     .route('/getAttackTable')
     .get(userCtrl.getAttackTable);
 
+router
+    .route('/getSummaryTable')
+    .get(userCtrl.getSummaryTable);
 
 /*
 router
@@ -62,3 +62,8 @@ router
 */
 
 module.exports = router;
+
+
+/*router
+    .route('/')
+    .get(userCtrl.findAllUser);*/

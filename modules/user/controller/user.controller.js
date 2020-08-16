@@ -13,8 +13,9 @@ const {Positions} = require('../../../config/constants');
 
 exports.findUser = catchAsync(async (req, res, next) => {
 
-    const name = req.query.name.toLowerCase();
+    const name = req.query.name;
 
+    console.log('name:', name);
     const user = await Player.findOne({player: name});
     if (!user) {
         return next(new AppError(`Can't find user with this ID `, 404));
@@ -23,9 +24,7 @@ exports.findUser = catchAsync(async (req, res, next) => {
 
     res.status(200).json({
         status: 'success',
-        data: {
-            user
-        },
+        data: user,
         error: false
     });
 });
@@ -123,15 +122,15 @@ exports.getDefenceTable = catchAsync(async (req, res, next) => {
                     {playerName: {$eq: name}},
                     {shirt_NO: {$in: pos}},
                     {
-                        $or:[
+                        $or: [
                             {
-                                $and:[
+                                $and: [
                                     {eventName: {$eq: 'Tackle'}},
                                     {action_result: {$eq: 'Turnover Won'}},
                                 ]
-                            } ,
+                            },
                             {
-                                $and:[
+                                $and: [
                                     {action_type: {$eq: 'Jackal'}},
                                     {action_result: {$eq: 'Success'}},
                                 ]
@@ -369,6 +368,15 @@ exports.getPieceTable = catchAsync(async (req, res, next) => {
                     {playerName: {$eq: name}},
                     {eventName: {$eq: "Lineout throw"}},
                     {shirt_NO: {$in: pos}},
+                    {
+                        $or:[
+                            {action_result:{$eq:"Won Clean"}},
+                            {action_result:{$eq:"Won Tap"}},
+                            {action_result:{$eq:"Won Penalty"}},
+                            {action_result:{$eq:"Won Other"}},
+                            {action_result:{$eq:"Won Free Kick"}},
+                        ]
+                    }
                 ]
             }
         },
@@ -379,19 +387,22 @@ exports.getPieceTable = catchAsync(async (req, res, next) => {
             }
         }
     ]);
+    console.log('lineout:', lineout);
     const percentage = await Stat.aggregate([
         {
             $match: {
                 $and: [
                     {playerName: {$eq: name}},
-                    /* {eventName: {$eq: "LineOut throw"}},*/
                     {shirt_NO: {$in: pos}},
-                    {action_result: {$eq: 'Won Clean'}},
-                    {action_result: {$eq: 'Won Free Kick'}},
-                    {action_result: {$eq: 'Won Other'}},
-                    {action_result: {$eq: 'Won Penalty'}},
-                    {action_result: {$eq: 'Won Tap'}},
-
+                    {
+                        $or: [
+                            {action_result: {$eq: 'Won Clean'}},
+                            {action_result: {$eq: 'Won Free Kick'}},
+                            {action_result: {$eq: 'Won Other'}},
+                            {action_result: {$eq: 'Won Penalty'}},
+                            {action_result: {$eq: 'Won Tap'}},
+                        ]
+                    },
                 ]
             }
         },
@@ -409,11 +420,16 @@ exports.getPieceTable = catchAsync(async (req, res, next) => {
                     {playerName: {$eq: name}},
                     {shirt_NO: {$in: pos}},
                     {eventName: {$eq: 'Lineout Take'}},
-                    {action_type: {$eq: 'LineOut Win 15m+'}},
-                    {action_type: {$eq: 'LineOut Win Back'}},
-                    {action_type: {$eq: 'LineOut Win Middle'}},
-                    {action_type: {$eq: 'LineOut Win Front'}},
-                    {action_type: {$eq: 'LineOut Win Quick'}},
+                    {
+                        $or:[
+                            {action_result:{$eq:"Won Clean"}},
+                            {action_result:{$eq:"Won Tap"}},
+                            {action_result:{$eq:"Won Penalty"}},
+                            {action_result:{$eq:"Won Other"}},
+                            {action_result:{$eq:"Won Free Kick"}},
+                        ]
+                    }
+
                 ]
             }
         },
@@ -425,6 +441,8 @@ exports.getPieceTable = catchAsync(async (req, res, next) => {
         }
     ]);
 
+    console.log('lo JUmps:', loJumps);
+
     const loSteals = await Stat.aggregate([
         {
             $match: {
@@ -432,11 +450,15 @@ exports.getPieceTable = catchAsync(async (req, res, next) => {
                     {playerName: {$eq: name}},
                     {shirt_NO: {$in: pos}},
                     {eventName: {$eq: 'Lineout Take'}},
-                    {action_type: {$eq: 'LineOut Steal 15m+'}},
-                    {action_type: {$eq: 'LineOut Steal Back'}},
-                    {action_type: {$eq: 'LineOut Steal Middle'}},
-                    {action_type: {$eq: 'LineOut Steal Front'}},
-                    {action_type: {$eq: 'LineOut Steal'}},
+                    {
+                        $or: [
+                            {action_type: {$eq: 'LineOut Steal 15m+'}},
+                            {action_type: {$eq: 'LineOut Steal Back'}},
+                            {action_type: {$eq: 'LineOut Steal Middle'}},
+                            {action_type: {$eq: 'LineOut Steal Front'}},
+                            {action_type: {$eq: 'LineOut Steal'}},
+                        ]
+                    }
                 ]
             }
         },
@@ -558,7 +580,6 @@ exports.getAttackTable = catchAsync(async (req, res, next) => {
             $match: {
                 playerName: {$eq: name},
                 eventName: {$eq: 'Carry'}
-
             }
         },
         {
@@ -805,7 +826,7 @@ exports.getAttackTable = catchAsync(async (req, res, next) => {
             tries: count3,
             triesAvg: (count3 / count).toFixed(3),
             offloads: count8,
-            offloadsAvg: (count8/count).toFixed(3),
+            offloadsAvg: (count8 / count).toFixed(3),
             tackleBreaks: count4,
             tackleBreaksAvg: (count4 / count).toFixed(3),
             lineBreak: count5,
@@ -829,26 +850,242 @@ exports.getAttackTable = catchAsync(async (req, res, next) => {
         error: false
     });
 });
+exports.getSummaryTable = catchAsync(async (req, res, next) => {
+
+    const name = req.query.playerName;
+    const position = req.query.position;
+    const pos = Positions[position];
+
+    const fxIDs = await Stat.aggregate([
+        {
+            $match: {
+                playerName: {$eq: name},
+            }
+        },
+        {
+            $group: {
+                _id: "$FxDate",
+                game: {$addToSet: "$fx_ID"},
+                count: {$sum: 1}
+            }
+        }
+    ]);
+
+    const gameTime = await Stat.aggregate([
+        {
+            $match: {
+                playerName: {$eq: name},
+            }
+        },
+        {
+            $group: {
+                _id: "$FxDate",
+                totalTime:{$sum:'$mins'}
+            }
+        }
+    ]);
+
+    // need to verify
+    const scoreMetersMade = await Stat.aggregate([
+        {
+            $match: {
+                $and: [
+                    {playerName: {$eq: name}},
+                    {shirt_NO: {$in: pos}},
+                ]
+            }
+        },
+        {
+            $group: {
+                _id: "$FxDate",
+                count: {$sum: "$metres"}
+            }
+        }
+    ]);
+    const scoreBallCarries = await Stat.aggregate([
+        {
+            $match: {
+                playerName: {$eq: name},
+                eventName: {$eq: 'Carry'}
+            }
+        },
+        {
+            $group: {
+                _id: "$FxDate",
+                count: {$sum: 1}
+            }
+        }
+    ]);
+    const scoreDefenderBeaten = await Stat.aggregate([
+        {
+            $match: {
+                $and: [
+                    {playerName: {$eq: name}},
+                    {shirt_NO: {$in: pos}},
+                    {action_type: {$eq: 'Defender Beaten'}},
+                ]
+            }
+        },
+        {
+            $group: {
+                _id: "$FxDate",
+                count: {$sum: 1}
+            }
+        }
+    ]);
+    const scoreTackle = await Stat.aggregate([
+        {
+            $match: {
+                $and: [
+                    {playerName: {$eq: name}},
+                    {eventName: {$eq: "Tackle"}},
+                    {shirt_NO: {$in: pos}},
+                ]
+            }
+        },
+        {
+            $group: {
+                _id: "$FxDate",
+                count: {$sum: 1}
+            }
+        }
+    ]);
+    const scoreTurnOverWon = await Stat.aggregate([
+        {
+            $match: {
+                $and: [
+                    {playerName: {$eq: name}},
+                    {shirt_NO: {$in: pos}},
+                    {
+                        $and: [
+                            {eventName: {$eq: 'Tackle'}},
+                            {action_result: {$eq: 'Turnover Won'}},
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            $group: {
+                _id: "$FxDate",
+                count: {$sum: 1}
+            }
+        },
+    ]);
+
+    const totalTackle = scoreTackle.reduce((acc, currentvalue)=>{
+        return  acc + currentvalue.count
+    },0)
+
+    const result = {
+        year: [],
+        games: [],
+        gameTime:[],
+        Score:[]
+    };
+
+    let year = [];
+    scoreMetersMade.forEach(item => {
+        year.push(item._id);
+    })
+    scoreBallCarries.forEach(item => {
+        year.push(item._id);
+    })
+    scoreDefenderBeaten.forEach(item => {
+        year.push(item._id);
+    })
+    scoreTackle.forEach(item => {
+        year.push(item._id);
+    })
+    scoreTurnOverWon.forEach(item => {
+        year.push(item._id);
+    })
+    console.log('gameTime:', gameTime);
+    gameTime.forEach(item => {
+        year.push(item._id);
+    })
+
+    const data = [];
+    year = [...Array.from(new Set(year))];
+    result.year = [...year];
+    for (let i = 0; i < year.length; i++) {
+        let countMetersMade = scoreMetersMade.find((item, index) => {
+            if (item._id === year[i]) {
+                return item._id;
+            }
+        });
+        let countfxIDs = fxIDs.find((item, index) => {
+            if (item._id === year[i]) {
+                return item._id;
+            }
+        });
+        let countBallCarries = scoreBallCarries.find((item, index) => {
+            if (item._id === year[i]) {
+                return item._id;
+            }
+        });
+        let countDefenderBeaten = scoreDefenderBeaten.find((item, index) => {
+            if (item._id === year[i]) {
+                return item._id;
+            }
+        });
+        let countTackle = scoreTackle.find((item, index) => {
+            if (item._id === year[i]) {
+                return item._id;
+            }
+        });
+        let countTurnOverWon = scoreTurnOverWon.find((item, index) => {
+            if (item._id === year[i]) {
+                return item._id;
+            }
+        });
+        let countGameTime = gameTime.find((item, index) => {
+            if (item._id === year[i]) {
+                return item._id;
+            }
+        });
+
+        const count = countfxIDs ? countfxIDs.count : 1;
+        const count1 = countBallCarries ? countBallCarries.count : 1;
+        const count2 = countMetersMade ? countMetersMade.count : 1;
+        const count3 = countDefenderBeaten ? countDefenderBeaten.count : 1;
+        const count4 = countTackle ? countTackle.count : 1;
+        const count9 = count4 / totalTackle;
+        const count5 = countTurnOverWon ? countTurnOverWon.count : 1;
+        const count8 = countGameTime ? countGameTime.totalTime : 1;
+        const item = {
+            year: year[i],
+            games: count,
+            gameTime: count8,
+            Score: (((count1 * 3) + (count2 * 2) + (count3 * 5) + ((count9 * 2)/10) + (count5 * 5)) + (((count8 * 2) / 10)/count)).toFixed(3)
+        }
+        data.push(item);
+    }
+
+    console.log('data:', data);
+
+    if (!result) {
+        return next(new AppError(`Can't find user with this ID `, 404));
+    }
+    res.status(200).json({
+        status: 'success',
+        data: data,
+        error: false
+    });
+});
 
 exports.submitForm = async (req, res, next) => {
 
-    /*var modal = new Player();
-    modal.photo.data = fs.readFileSync(req.body.data.photo);
-    modal.photo.contentType = 'image/png';
-    modal.player = req.data.player;
-    modal.save();*/
 
     const {data} = req.body;
-
-
+    console.log('data:', data);
     const user = await Player.create(data);
 
+    console.log('user:', user);
 
     res.status(200).json({
         status: 'success',
-        data: {
-            message: "Form Submitted"
-        },
+        data:user,
         error: false
     });
 };

@@ -5,14 +5,11 @@ const playerSchema = mongoose.Schema({
     player: {
         type: String, ref: 'Stats'
     },
-    dob: Date,
+    dob: String,
     age: Number,
     height: Number,
     weight:Number,
-    photo:Object
-    /*photo: {
-        data: Buffer, contentType: String
-    }*/
+    photo: Object
 
 });
 

@@ -29,8 +29,14 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bosyParser.json());
 
+
 // App Routes
 app.use('/api/v1', indexRouter);
+
+/*app.use(multer({ dest: `./uploads/`, rename: function (fieldname, filename) {
+    return filename;
+},
+}));*/
 
 // SWAGGER
 app.use('/api-docs', swaggerUi.serve);
