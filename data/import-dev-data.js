@@ -112,9 +112,6 @@ const importData = async (statss) => {
         }
     }
 
-    statss=[];
-   // const users = await User.find();
-  //  console.log(users);
 
     console.log('stats.length: ', stats.length)
 
