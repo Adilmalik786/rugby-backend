@@ -3,22 +3,6 @@ const router = express();
 const userCtrl = require('./controller/user.controller');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' })
-/*const middleware = require('../../middlewares/authentication')*/
-
-/*
-router
-    .route('/stats')
-    .get(userCtrl.getUserStats);
-
-router
-    .route('/monthly-plan/:year')
-    .get(userCtrl.getMonthlyPlan)
-
-
-router
-    .route('/top-5-users')
-    .get(userCtrl.aliasTopUsers,userCtrl.findAllUser)
-*/
 
 
 router
@@ -33,6 +17,7 @@ router
     .route('/finduser')
     .get(userCtrl.findUser);
 
+/*
 router
     .route('/getDefenceTable')
     .get(userCtrl.getDefenceTable);
@@ -52,6 +37,12 @@ router
 router
     .route('/getSummaryTable')
     .get(userCtrl.getSummaryTable);
+*/
+
+router
+    .route('/getALLData')
+    .get(userCtrl.getAllData);
+
 
 /*
 router

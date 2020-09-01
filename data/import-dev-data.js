@@ -1,12 +1,12 @@
-var fs = require('fs');
 const dotenv = require('dotenv');
 dotenv.config({path: './config.env'});
 const mongoose = require('mongoose');
 const Stat = require('../modules/user/models/stats.model');
+const ScoreModel = require('../modules/user/models/score');
 const moment = require('moment')
 var xlsxtojson = require("xlsx-to-json");
 
-//  DATABASE CONNECTION
+
 const DB = process.env.DATABASE_CONNECTION.replace(
     '<PASSWORD>',
     process.env.DATABASE_PASSWORD);
@@ -21,7 +21,7 @@ mongoose.connect(DB, {
 });
 
 // Convert xlsx file to JSON file format
-const convertXlsToJSON = (callBack) => {
+const convertXlsToJSONStats = (callBack) => {
 
     xlsxtojson({
         input: `${__dirname}/stats.xlsx`,  // input xls
@@ -29,20 +29,30 @@ const convertXlsToJSON = (callBack) => {
         lowerCaseHeaders: true
     }, function (err, result) {
         if (err) {
-            console.log('Error: ', err)
+          //  console.log('Error: ', err)
         } else {
-            console.log('sucessfully converted to JSON')
+
             return callBack(result)
         }
     });
-}
+};
+const convertXlsToJSONScore = (callBack) => {
 
+    xlsxtojson({
+        input: `${__dirname}/summary.xlsx`,  // input xls
+        output: "summary.json", // output json
+        lowerCaseHeaders: true
+    }, function (err, result) {
+        if (err) {
+          //  console.log('Error: ', err)
+        } else {
+         //   console.log('sucessfully converted to JSON')
+            return callBack(result)
+        }
+    });
+};
 
-// READ JSON FILE
-//const stats = JSON.parse(fs.readFileSync(`${__dirname}/stats.json`, 'utf-8'));
-
-//IMPORT DATA INTO DATABASE
-const importData = async (statss) => {
+const importDataStats = async (statss) => {
 
     const stats = statss.map((stat) => {
         return {
@@ -111,19 +121,37 @@ const importData = async (statss) => {
             toInsert = [];
         }
     }
+};
+const importDataStatsScore = async (statss) => {
 
+    const stats = statss.map((score) => {
+        return {
+            rank: score['Rank'] === '#N/A' ? 0 : score['Rank'],
+            position_rank: score['Position Rank'] === '#N/A' ? 0 : score['Position Rank'],
+            playerName: score['Name'],
+            position: score['Position'] ,
+            score: score['Score'] === '#N/A' ? 0 : score['Score'],
+            year: score['Year'],
+        };
+    })
 
-    console.log('stats.length: ', stats.length)
+    let toInsert = [];
+    for (let i = 0; i < stats.length; i++) {
+        toInsert.push(stats[i]);
+        const isLastItem = i === stats.length - 1;
+        if (i % 10000 === 0 || isLastItem) {
+            await ScoreModel.insertMany(toInsert);
+            toInsert = [];
+        }
+    }
 
- /*   await Stat.insertMany(stats,{ordered: false})*/
-    console.log('Data Successfully Loaded')
-    process.exit(1);
 };
 
 // DELETE DATA FROM DATABASE
 const deleteData = async () => {
     try {
         await Stat.deleteMany();
+        await ScoreModel.deleteMany();
         console.log('Data has been deleted Successfully');
         process.exit(1);
     } catch (err) {
@@ -133,12 +161,22 @@ const deleteData = async () => {
 
 if (process.argv[2] === '--import') {
 
-    convertXlsToJSON((stats) => {
-        importData(stats);
-    })
+    convertXlsToJSONStats((stats) => {
+        importDataStats(stats).then(()=>{
+            convertXlsToJSONScore( (data)=>{
+                importDataStatsScore(data).then(()=>{
+                    process.exit(1);
+                });
+            });
+        });
+    });
+
+
+
 } else if (process.argv[2] === '--delete') {
     deleteData();
 }
 
 // Command
 //node data/import-dev-data.js --import
+//node data/import-dev-data.js --delete
